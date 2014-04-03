@@ -120,7 +120,5 @@ depending on the type of the Python object.
 
 """
 
-from base import *
-
-__docformat__ = "restructuredtext en"
-__version__ = "0.2.1"
+from .base import *
+__version__ = "0.3"

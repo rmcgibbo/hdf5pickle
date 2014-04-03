@@ -429,9 +429,8 @@ Cleanup
 import sys, os
 import tables
 import doctest, unittest
-import copy_reg
+from six.moves import copyreg as copy_reg
 
-import test_support
 import pickletester
 import hdf5pickle as p
 
@@ -490,14 +489,22 @@ class PickleTests(pickletester.AbstractPickleTests,
             e.restore()
 
     def test_long1(self):
-        x = 12345678910111213141516178920L
+        if sys.version_info <= (3,0):
+            x = 12345678910111213141516178920L
+        else:
+            x = 12345678910111213141516178920
+
         for proto in pickletester.protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)
             self.assertEqual(x, y)
 
     def test_long4(self):
-        x = 12345678910111213141516178920L << (256*8)
+        if sys.version_info <= (3,0):
+            x = 12345678910111213141516178920L << (256*8)
+        else:
+            x = 12345678910111213141516178920 << (256*8)
+
         for proto in pickletester.protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)

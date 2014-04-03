@@ -10,16 +10,14 @@
 __all__ = ['dump', 'load', 'Pickler', 'Unpickler']
 
 import re, struct, sys
-from copy_reg import dispatch_table
-from copy_reg import _extension_registry, _inverted_registry, _extension_cache
+from six import PY3
+from six.moves.copyreg import dispatch_table
+from six.moves.copyreg import _extension_registry, _inverted_registry, _extension_cache
+from six.moves import cPickle as pickle
 from types import *
 import keyword, marshal
 import tables
 import numpy
-try:
-    import cPickle as pickle
-except ImportError:
-    import pickle
 
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
@@ -631,6 +629,7 @@ class Unpickler(object):
         if not path in self.memo:
             node = self.file.get_path(path)
             key = self.file.get_attr(node, 'pickletype')
+            print('key', key)
             if key:
                 f = self._dispatch[key]
                 obj = f(self, node)
@@ -797,9 +796,9 @@ class Unpickler(object):
         if not instantiated:
             try:
                 value = klass(*args)
-            except TypeError, err:
-                raise TypeError, "in constructor for %s: %s" % (
-                    klass.__name__, str(err)), sys.exc_info()[2]
+            except TypeError as err:
+                raise TypeError("in constructor for %s: %s" % (
+                    klass.__name__, str(err)), sys.exc_info()[2])
         return value
 
     def _load_inst(self, node):

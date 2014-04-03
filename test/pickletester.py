@@ -7,12 +7,12 @@
 
 
 import unittest
-import pickle
-import cPickle
 import pickletools
-import copy_reg
+from six import PY2
+import pickle
+from six.moves import copyreg as copy_reg
 
-from test_support import TestFailed, have_unicode, TESTFN
+#from test_support import TestFailed, have_unicode, TESTFN
 
 # Tests that try a number of pickle protocols should have a
 #     for proto in protocols:
@@ -473,7 +473,7 @@ class AbstractPickleTests(unittest.TestCase):
             buf = "S" + s + "\012p0\012."
             self.assertRaises(ValueError, self.loads, buf)
 
-    if have_unicode:
+    if PY2:
         def test_unicode(self):
             endcases = [unicode(''), unicode('<\\u>'), unicode('<\\\u1234>'),
                         unicode('<\n>'),  unicode('<\\>')]

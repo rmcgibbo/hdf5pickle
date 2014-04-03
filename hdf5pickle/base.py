@@ -307,7 +307,7 @@ class Pickler(object):
         # Check if we have a dispatch for it
         t = type(obj)
         f = self._dispatch.get(t)
-        if f:
+        if f and not (isinstance(obj, numpy.ndarray) and obj.dtype == object):
             x = f(self, path, obj)
             return
 

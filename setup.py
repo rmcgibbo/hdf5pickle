@@ -14,7 +14,7 @@ setup(
     keywords = "hdf5 pickle pytables",
     url = "",
 
-    install_requires = ['tables >= 3'],
+    install_requires = ['tables >= 3', 'six'],
 
     long_description = """
 Create easily interfaceable representations of Python objects in HDF5

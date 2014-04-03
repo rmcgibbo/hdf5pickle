@@ -995,6 +995,10 @@ def dump(obj, filename, compress=3, complib='blosc'):
         Specifying a compression library which is not available in the
         system issues a FiltersWarning and sets the library to the default
         one.
+
+    See Also
+    --------
+    hdf5pickle.load
     """
     if not isinstance(filename, basestring):
         raise ValueError('filename must be a string: %s' % filename)

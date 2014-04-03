@@ -12,10 +12,9 @@ setup(
     description = "Pickle Python objects to HDF5 files",
     license = "BSD & Python Software Foundation License",
     keywords = "hdf5 pickle pytables",
-    url = "",
-
+    zip_safe=False,
+    url = "https://github.com/rmcgibbo/hdf5pickle",
     install_requires = ['tables >= 3', 'six'],
-
     long_description = """
 Create easily interfaceable representations of Python objects in HDF5
 files. The aim of this module is to provide both

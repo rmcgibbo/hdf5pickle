@@ -157,7 +157,7 @@ class _FileInterface(object):
 
     def set_attr(self, obj, attr, value):
         if isinstance(obj, tables.Group):
-            obj._f_setAttr(attr, value)
+            obj._f_setattr(attr, value)
         else:
             setattr(obj.attrs, attr, value)
 
@@ -170,16 +170,16 @@ class _FileInterface(object):
 
     def get_attr(self, obj, attr):
         if isinstance(obj, tables.Group):
-            return obj._f_getAttr(attr)
+            return obj._f_getattr(attr)
         else:
             return getattr(obj.attrs, attr)
 
     def get_path(self, path):
-        return self.file.getNode(path)
+        return self.file.get_node(path)
 
     def has_path(self, path):
         try:
-            self.file.getNode(path)
+            self.file.get_node(path)
             return True
         except NoSuchNodeError:
             return False
@@ -190,8 +190,8 @@ class _FileInterface(object):
 
         if type_ in (tuple, list, str, bytes):
             if len(data) == 0:
-                array = self.file.createArray(
-                    where, name, numpy.array([0], dtype=numpy.int8))
+                array = self.file.create_carray(
+                    where, name, obj=numpy.array([0], dtype=numpy.int8))
                 self.set_attr(array, 'empty', 1)
                 return array
             elif type_ in (tuple, list):
@@ -202,28 +202,27 @@ class _FileInterface(object):
                     if type(item) != btype:
                         raise TypeError
             if type_ is bytes:
-                return self.file.createArray(where, name, numpy.fromstring(
+                return self.file.create_carray(where, name, obj=numpy.fromstring(
                     data, dtype=self.type_map.get(str, numpy.uint8)))
             elif type_ is str:
                 # FIXME: pytables chops off NULs from strings!
                 #        protect via encoding in 8-bytes
-                return self.file.createArray(where, name, numpy.fromstring(
+                return self.file.create_carray(where, name, obj=numpy.fromstring(
                     data.encode('utf-8'), dtype=self.type_map.get(str, numpy.uint8)))
 
-            return self.file.createArray(where, name, numpy.array(
+            return self.file.create_array(where, name, obj=numpy.array(
                 data, dtype=self.type_map.get(btype)))
         elif type_ in (int, float, complex):
-            return self.file.createArray(where, name, numpy.array(
+            return self.file.create_array(where, name, obj=numpy.array(
                 data, dtype=self.type_map.get(type_)))
         elif type_ in (long,):
-            return self.file.createArray(where, name, numpy.array(
+            return self.file.create_array(where, name, obj=numpy.array(
                 data, dtype=self.type_map.get(type_, numpy.object_)))
         else:
             raise TypeError
 
     def save_numeric_array(self, path, data):
         where, name = self._splitpath(path)
-        atom = tables.Atom.from_dtype(data.dtype)
         return self.file.create_carray(where, name, obj=data)
 
     def load_array(self, node, type_):
@@ -255,7 +254,7 @@ class _FileInterface(object):
 
     def new_group(self, path):
         where, name = self._splitpath(path)
-        return self.file.createGroup(where, name)
+        return self.file.create_group(where, name)
 
 
 #############################################################################

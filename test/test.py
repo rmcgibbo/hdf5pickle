@@ -425,13 +425,14 @@ Cleanup
 ... except IOError: pass
 ... except OSError: pass
 """
-
-import sys, os
+from __future__ import absolute_import
+import sys
+import os
 import tables
 import doctest, unittest
 from six.moves import copyreg as copy_reg
 
-import pickletester
+from . import pickletester
 import hdf5pickle as p
 
 class PickleTests(pickletester.AbstractPickleTests,
@@ -441,16 +442,17 @@ class PickleTests(pickletester.AbstractPickleTests,
     error = IOError
 
     def dumps(self, arg, proto=0, fast=0):
-        try: os.unlink('hdf5test.h5')
+        try:
+            os.unlink('hdf5test.h5')
         except IOError: pass
         except OSError: pass
         p.dump(arg, 'hdf5test.h5')
 
-        with open('hdf5test.h5', 'r') as f:
+        with open('hdf5test.h5', 'rb') as f:
             return f.read()
 
     def loads(self, buf):
-        with open('hdf5test.h5', 'w') as f:
+        with open('hdf5test.h5', 'wb') as f:
             f.write(buf)
 
         return p.load('hdf5test.h5')
@@ -489,22 +491,14 @@ class PickleTests(pickletester.AbstractPickleTests,
             e.restore()
 
     def test_long1(self):
-        if sys.version_info <= (3,0):
-            x = 12345678910111213141516178920L
-        else:
-            x = 12345678910111213141516178920
-
+        x = 2**64
         for proto in pickletester.protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)
             self.assertEqual(x, y)
 
     def test_long4(self):
-        if sys.version_info <= (3,0):
-            x = 12345678910111213141516178920L << (256*8)
-        else:
-            x = 12345678910111213141516178920 << (256*8)
-
+        x = 2**64 << (256*8)
         for proto in pickletester.protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)
@@ -519,6 +513,12 @@ class PickleTests(pickletester.AbstractPickleTests,
             y = self.loads(s)   # will raise TypeError if __init__ called
             self.assertEqual(y.abc, 666)
             self.assertEqual(x.__dict__, y.__dict__)
+
+    def test_bytes(self):
+        x = b'abc'
+        s = self.dumps(x)
+        y = self.loads(s)
+        self.assertEqual(x, y)
 
     def test_singletons(self):
         for proto in pickletester.protocols:

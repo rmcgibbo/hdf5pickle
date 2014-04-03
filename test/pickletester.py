@@ -8,9 +8,13 @@
 
 import unittest
 import pickletools
-from six import PY2
+from six import PY2, PY3
 import pickle
 from six.moves import copyreg as copy_reg
+
+if PY3:
+    long = int
+    unicode = str
 
 #from test_support import TestFailed, have_unicode, TESTFN
 
@@ -72,6 +76,9 @@ class ExtensionSaver:
 class C:
     def __cmp__(self, other):
         return cmp(self.__dict__, other.__dict__)
+
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 import __main__
 __main__.C = C
@@ -354,7 +361,7 @@ def create_data():
     c = C()
     c.foo = 1
     c.bar = 2
-    x = [0, 1L, 2.0, 3.0+0j]
+    x = [0, 2**64, 2.0, 3.0+0j]
     # Append some integer test cases at cPickle.c's internal size
     # cutoffs.
     uint1max = 0xff
@@ -400,6 +407,7 @@ class AbstractPickleTests(unittest.TestCase):
 
     def test_roundtrip_equality(self):
         expected = self._testdata
+
         for proto in protocols:
             s = self.dumps(expected, proto)
             got = self.loads(s)
@@ -432,7 +440,7 @@ class AbstractPickleTests(unittest.TestCase):
         for proto in protocols:
             s = self.dumps(d, proto)
             x = self.loads(s)
-            self.assertEqual(x.keys(), [1])
+            self.assertEqual(list(x.keys()), [1])
             self.assert_(x[1] is x)
 
     def test_recursive_inst(self):
@@ -455,7 +463,7 @@ class AbstractPickleTests(unittest.TestCase):
             x = self.loads(s)
             self.assertEqual(len(x), 1)
             self.assertEqual(dir(x[0]), dir(i))
-            self.assertEqual(x[0].attr.keys(), [1])
+            self.assertEqual(list(x[0].attr.keys()), [1])
             self.assert_(x[0].attr[1] is x)
 
     def test_insecure_strings(self):
@@ -486,7 +494,7 @@ class AbstractPickleTests(unittest.TestCase):
     def test_ints(self):
         import sys
         for proto in protocols:
-            n = sys.maxint
+            n = sys.maxsize
             while n:
                 for expected in (-n, n):
                     s = self.dumps(expected, proto)
@@ -495,7 +503,7 @@ class AbstractPickleTests(unittest.TestCase):
                 n = n >> 1
 
     def test_maxint64(self):
-        maxint64 = (1L << 63) - 1
+        maxint64 = (1 << 63) - 1
         data = 'I' + str(maxint64) + '\n.'
         got = self.loads(data)
         self.assertEqual(got, maxint64)
@@ -508,7 +516,7 @@ class AbstractPickleTests(unittest.TestCase):
         for proto in protocols:
             # 256 bytes is where LONG4 begins.
             for nbits in 1, 8, 8*254, 8*255, 8*256, 8*257:
-                nbase = 1L << nbits
+                nbase = 1 << nbits
                 for npos in nbase-1, nbase, nbase+1:
                     for n in npos, -npos:
                         pickle = self.dumps(n, proto)
@@ -571,14 +579,14 @@ class AbstractPickleTests(unittest.TestCase):
         badpickle = pickle.PROTO + chr(oob) + build_none
         try:
             self.loads(badpickle)
-        except ValueError, detail:
+        except ValueError as detail:
             self.failUnless(str(detail).startswith(
                                             "unsupported pickle protocol"))
         else:
             self.fail("expected bad protocol number to raise ValueError")
 
     def test_long1(self):
-        x = 12345678910111213141516178920L
+        x = 2**64
         for proto in protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)
@@ -586,7 +594,7 @@ class AbstractPickleTests(unittest.TestCase):
             self.assertEqual(opcode_in_pickle(pickle.LONG1, s), proto >= 2)
 
     def test_long4(self):
-        x = 12345678910111213141516178920L << (256*8)
+        x = 2**64 << (256*8)
         for proto in protocols:
             s = self.dumps(x, proto)
             y = self.loads(s)
@@ -843,7 +851,7 @@ class REX_three(object):
         self._proto = proto
         return REX_two, ()
     def __reduce__(self):
-        raise TestFailed, "This __reduce__ shouldn't be called"
+        raise ValueError("This __reduce__ shouldn't be called")
 
 # Test classes for newobj
 
@@ -851,7 +859,7 @@ class MyInt(int):
     sample = 1
 
 class MyLong(long):
-    sample = 1L
+    sample = 2**64
 
 class MyFloat(float):
     sample = 1.0

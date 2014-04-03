@@ -11,6 +11,7 @@ __all__ = ['dump', 'load', 'Pickler', 'Unpickler']
 
 import re, struct, sys
 from six import PY3
+from six import iterkeys, iteritems
 from six.moves.copyreg import dispatch_table
 from six.moves.copyreg import _extension_registry, _inverted_registry, _extension_cache
 from six.moves import cPickle as pickle
@@ -18,6 +19,24 @@ from types import *
 import keyword, marshal
 import tables
 import numpy
+
+if PY3:
+    IntType = int
+    LongType = int
+    NoneType = type(None)
+    FloatType = float
+    ComplexType = type(1j)
+    StringType = str
+    UnicodeType = str
+    BytesType = bytes
+    TupleType = tuple
+    ListType = list
+    DictionaryType = dict
+    InstanceType = object
+    ClassType = object
+    TypeType = type
+    basestring = str
+    long = int
 
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
@@ -27,6 +46,7 @@ from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
 BOOL    = 'BB'
 REF     = 'RR'
 COMPLEX = 'CC'
+BYTES   = 'B'
 
 NUMARRAY = 'NA'
 NUMPY    = 'NP'
@@ -165,7 +185,7 @@ class _FileInterface(object):
         where, name = self._splitpath(path)
         type_ = type(data)
 
-        if type_ in (tuple, list, str):
+        if type_ in (tuple, list, str, bytes):
             if len(data) == 0:
                 array = self.file.createArray(
                     where, name, numpy.array([0], dtype=numpy.int8))
@@ -178,11 +198,15 @@ class _FileInterface(object):
                 for item in data:
                     if type(item) != btype:
                         raise TypeError
-            if type_ is str:
+            if type_ is bytes:
+                return self.file.createArray(where, name, numpy.fromstring(
+                    data, dtype=self.type_map.get(str, numpy.uint8)))
+            elif type_ is str:
                 # FIXME: pytables chops off NULs from strings!
                 #        protect via encoding in 8-bytes
                 return self.file.createArray(where, name, numpy.fromstring(
-                    data, dtype=self.type_map.get(str, numpy.uint8)))
+                    data.encode('utf-8'), dtype=self.type_map.get(str, numpy.uint8)))
+
             return self.file.createArray(where, name, numpy.array(
                 data, dtype=self.type_map.get(btype)))
         elif type_ in (int, float, complex):
@@ -199,13 +223,18 @@ class _FileInterface(object):
         return self.file.createArray(where, name, data)
 
     def load_array(self, node, type_):
-        if type_ in (tuple, list, str):
+        if type_ in (tuple, list, str, bytes):
             if self.has_attr(node, 'empty'):
                 return type_()
             else:
                 if type_ is str:
                     # FIXME: pytables chops off NULs from strings!
                     #        protect via encoding in 8-bytes
+                    a = numpy.asarray(node.read()).tostring()
+                    if PY3:
+                        return a.decode('utf-8')
+                    return a
+                elif type_ is bytes:
                     return numpy.asarray(node.read()).tostring()
                 return type_(node.read())
         elif type_ in (int, float):
@@ -428,7 +457,7 @@ class Pickler(object):
     _dispatch[IntType] = _save_int
 
     def _save_long(self, path, obj):
-        array = self.file.save_array(path, str(encode_long(obj)))
+        array = self.file.save_array(path, bytes(encode_long(obj)))
         self.file.set_attr(array, 'pickletype', LONG)
     _dispatch[LongType] = _save_long
 
@@ -441,6 +470,11 @@ class Pickler(object):
         array = self.file.save_array(path, obj)
         self.file.set_attr(array, 'pickletype', COMPLEX)
     _dispatch[ComplexType] = _save_complex
+
+    def _save_bytes(self, path, obj):
+        node = self.file.save_array(path, obj)
+        self.file.set_attr(node, 'pickletype', BYTES)
+    _dispatch[BytesType] = _save_bytes
 
     def _save_string(self, path, obj):
         node = self.file.save_array(path, obj)
@@ -481,12 +515,12 @@ class Pickler(object):
         strkeys = {}
         seen = {}
         keyi = 0
-        for key in obj.iterkeys():
+        for key in iterkeys(obj):
             if (isinstance(key, str) and _check_pytables_name(key)
                     and key != "__"):
                 strkeys[key] = key
                 seen[key] = True
-        for key in obj.iterkeys():
+        for key in iterkeys(obj):
             if not key in strkeys:
                 while ("_%d" % keyi) in seen: keyi += 1
                 strkeys[key] = "_%d" % keyi
@@ -494,7 +528,7 @@ class Pickler(object):
 
         hassub = self.file.has_path('%s/__' % path)
 
-        for key, value in obj.iteritems():
+        for key, value in iteritems(obj):
             self._save('/'.join([path, strkeys[key]]), value)
             if not strkeys[key] is key:
                 if not hassub:
@@ -629,7 +663,6 @@ class Unpickler(object):
         if not path in self.memo:
             node = self.file.get_path(path)
             key = self.file.get_attr(node, 'pickletype')
-            print('key', key)
             if key:
                 f = self._dispatch[key]
                 obj = f(self, node)
@@ -670,7 +703,7 @@ class Unpickler(object):
 
         if self.file.has_path('%s/__/dictitems' % path):
             data = self.load('%s/__/dictitems' % path)
-            for key, value in data.iteritems():
+            for key, value in iteritems(data):
                 obj[key] = value
 
         if self.file.has_path('%s/__/content' % path):
@@ -697,7 +730,7 @@ class Unpickler(object):
     _dispatch[INT] = _load_int
 
     def _load_long(self, node):
-        data = self.file.load_array(node, str)
+        data = self.file.load_array(node, bytes)
         return decode_long(data)
     _dispatch[LONG] = _load_long
 
@@ -713,9 +746,13 @@ class Unpickler(object):
         return self.file.load_array(node, str)
     _dispatch[STRING] = _load_string
 
+    def _load_bytes(self, node):
+        return self.file.load_array(node, bytes)
+    _dispatch[BYTES] = _load_bytes
+
     def _load_unicode(self, node):
         data = self.file.load_array(node, str)
-        return data.decode('utf-8')
+        return data
     _dispatch[UNICODE] = _load_unicode
 
     def _load_list_content(self, node):
@@ -725,18 +762,11 @@ class Unpickler(object):
         items = []
         self.memo[node._v_pathname] = items # avoid infinite loop
 
-        def cmpfunc(a, b):
-            c = len(a) - len(b)
-            if c == 0:
-                c = cmp(a, b)
-            return c
-
         names = list(node._v_children)
-        names.sort(cmpfunc)
+        names.sort(key=lambda n: int(n.strip('_')))
 
         for name in names:
             items.append(self.load('%s/%s' % (node._v_pathname, name)))
-        
         return items
     
     def _load_tuple(self, node):

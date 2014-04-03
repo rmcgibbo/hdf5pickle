@@ -20,6 +20,7 @@ import keyword, marshal
 import tables
 import numpy
 
+unicode_type = type(u'')
 if PY3:
     IntType = int
     LongType = int
@@ -37,6 +38,8 @@ if PY3:
     TypeType = type
     basestring = str
     long = int
+else:
+    BytesType = StringType
 
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
@@ -223,7 +226,7 @@ class _FileInterface(object):
         return self.file.createArray(where, name, data)
 
     def load_array(self, node, type_):
-        if type_ in (tuple, list, str, bytes):
+        if type_ in (tuple, list, str, bytes, unicode_type):
             if self.has_attr(node, 'empty'):
                 return type_()
             else:
@@ -236,6 +239,8 @@ class _FileInterface(object):
                     return a
                 elif type_ is bytes:
                     return numpy.asarray(node.read()).tostring()
+                elif type_ is unicode_type:
+                    return numpy.asarray(node.read()).tostring().decode('utf-8')
                 return type_(node.read())
         elif type_ in (int, float):
             return type_(node.read())
@@ -751,7 +756,8 @@ class Unpickler(object):
     _dispatch[BYTES] = _load_bytes
 
     def _load_unicode(self, node):
-        data = self.file.load_array(node, str)
+        data = self.file.load_array(node, unicode_type)
+        print('unicode', data)
         return data
     _dispatch[UNICODE] = _load_unicode
 

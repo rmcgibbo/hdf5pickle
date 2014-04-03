@@ -1,13 +1,18 @@
-language: python
+language: c
 
-python:
-  - "2.6"
-  - "2.7"
-  - "3.2"
-  - "3.3"
+env:
+  matrix:
+    - python=2.6
+    - python=2.7
+    - python=3.3
 
 install:
-  - sudo apt-get install libhdf5-serial-dev python-tables python-six
+  - sudo apt-get install python-pip
+  - sudo pip install conda
+  - sudo conda init
+  - sudo conda create --yes -n ${python} python=${python} numpy pytables nosetests six
+  - source activate ${python}
+  - sudo python setup.py install
 
 script:
   - nosetests

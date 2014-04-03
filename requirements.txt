@@ -1,2 +1,4 @@
-tables>=3.0
 six
+numpy
+tables>=3.0
+

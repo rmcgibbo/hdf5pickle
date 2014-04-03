@@ -417,17 +417,6 @@ class AbstractPickleTests(unittest.TestCase):
     # there's a comment with an exclamation point there whose meaning
     # is a mystery.  cPickle also suppresses PUT for objects with a refcount
     # of 1.
-    def dont_test_disassembly(self):
-        from cStringIO import StringIO
-        from pickletools import dis
-
-        for proto, expected in (0, DATA0_DIS), (1, DATA1_DIS):
-            s = self.dumps(self._testdata, proto)
-            filelike = StringIO()
-            dis(s, out=filelike)
-            got = filelike.getvalue()
-            self.assertEqual(expected, got)
-
     def test_recursive_list(self):
         l = []
         l.append(l)
@@ -468,9 +457,6 @@ class AbstractPickleTests(unittest.TestCase):
             self.assertEqual(dir(x[0]), dir(i))
             self.assertEqual(x[0].attr.keys(), [1])
             self.assert_(x[0].attr[1] is x)
-
-    def test_garyp(self):
-        self.assertRaises(self.error, self.loads, 'garyp')
 
     def test_insecure_strings(self):
         insecure = ["abc", "2 + 2", # not quoted

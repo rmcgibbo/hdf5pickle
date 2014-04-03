@@ -7,16 +7,20 @@
 #
 # See LICENSE.txt for some legalese.
 
-__all__ = ['dump', 'load', 'Pickler', 'Unpickler',
-           'dump_many', 'load_many']
+__all__ = ['dump', 'load', 'Pickler', 'Unpickler']
 
-__docformat__ = "restructuredtext en"
-
+import re, struct, sys
 from copy_reg import dispatch_table
 from copy_reg import _extension_registry, _inverted_registry, _extension_cache
 from types import *
 import keyword, marshal
-import tables, numpy, cPickle as pickle, re, struct, sys
+import tables
+import numpy
+try:
+    import cPickle as pickle
+except ImportError:
+    import pickle
+
 
 from pickle import whichmodule, PicklingError, FLOAT, INT, LONG, NONE, \
      REDUCE, STRING, UNICODE, GLOBAL, DICT, INST, LIST, TUPLE, EXT4, \
@@ -32,6 +36,7 @@ NUMERIC  = 'NU'
 
 HIGHEST_PROTOCOL = 2
 """The pickling (programming) protocol supported by this module"""
+
 
 def _DEBUG(*args):
     sys.stderr.write(' '.join(map(str, args)) + '\n')
@@ -933,69 +938,50 @@ def _check_pytables_name(key):
 #############################################################################
 
 
-def dump(obj, file, path, type_map=None):
+def dump(obj, filename, compress=3):
     """
-    Dump a Python object to an open PyTables HDF5 file.
+    Fast persistence of an arbitrary Python object into HDF5 files
 
-    :param obj:  the object to dump
-    :param file: where to dump
-    :type  file: tables.File
-    :param path: path where to dump in the file
-    :param type_map:
-        mapping of Python basic types (str, int, ...) to numpy types.
-        If ``None``, numpy's default mapping is used.
+    Parameters
+    ----------
+    value: any Python object
+        The object to store to disk
+    filename: string
+        The name of the file in which it is to be stored.
+    compress: integer for 0 to 9, optional
+        Optional compression level for the data. 0 is no compression.
+        Higher means more compression, but also slower read and
+        write times. Using a value of 3 is often a good compromise.
     """
-    Pickler(file, type_map=type_map).dump(path, obj)
+    if not isinstance(filename, basestring):
+        raise ValueError('filename must be a string: %s' % filename)
 
-def load(file, path):
+    compress = min(max(compress, 0), 9)
+    filters = tables.Filters(complevel=compress, complib='zlib')
+    with tables.open_file(filename, 'w', filters=filters) as file:
+        Pickler(file).dump('/data', obj)
+
+
+def load(filename):
     """
-    Load a Python object from an open PyTables HDF5 file.
+    Reconstruct a Python object from a file persisted with h5pickle.dump
 
-    :param file: where to load from
-    :type  file: tables.File
-    :param path: path to the object in the file
+    Parameters
+    -----------
+    filename: string
+        The name of the file from which to load the object
 
-    :return: loaded object
+    Returns
+    -------
+    result: any Python object
+        The object stored in the file.
+
+    See Also
+    --------
+    hdf5pickle.dump
     """
-    return Unpickler(file).load(path)
+    if not isinstance(filename, basestring):
+        raise ValueError('filename must be a string: %s' % filename)
 
-def dump_many(file, desc, type_map=None):
-    """
-    Dump multiple Python objects to an open PyTables HDF5 file,
-    preserving any references between the objects.
-
-    Calling `dump(file, path)` many times for objects keeping references
-    to each other would result in duplicated data.
-
-    :param file: where to dump
-    :type  file: tables.File
-    :param desc: a list of (path, obj)
-    :param type_map:
-        mapping of Python basic types (str, int, ...) to numpy types.
-        If ``None``, numpy's default mapping is used.
-    """
-    p = Pickler(file, type_map=type_map)
-    for path, obj in desc:
-        p.dump(path, obj)
-
-def load_many(file, paths):
-    """
-    Load multiple Python objects from the file, preserving any
-    references between them.
-
-    Calling `load(file, path)` many times for objects keeping references
-    to each other would result to duplicated data.
-
-    :param file: where to dump
-    :type  file: tables.File
-    :param paths: a list of paths where to load from
-
-    :return: list of (path, object)
-    """    
-    p = Unpickler(file)
-    r = []
-    for path in paths:
-        obj = p.load(path)
-        r.append( (path, obj) )
-    return r
-
+    with tables.open_file(filename, 'r') as file:
+        return Unpickler(file).load('/data')

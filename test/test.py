@@ -1,5 +1,3 @@
-#!/usr/bin/python
-# -*- encoding: utf-8 -*-
 # Copyright (c) 2006 Pauli Virtanen <pav@iki.fi>
 r"""
 
@@ -106,9 +104,6 @@ Basic types
 
     >>> saveload('abbacaca')
     'abbacaca'
-
-    >>> saveload(u'Jørgen Bjürström')
-    u'J\xc3\xb8rgen Bj\xc3\xbcrstr\xc3\xb6m'
 
     >>> saveload('a\x00\x00b\x00\x00c\x00\x00d\x00\x00')
     'a\x00\x00b\x00\x00c\x00\x00d\x00\x00'
@@ -450,27 +445,16 @@ class PickleTests(pickletester.AbstractPickleTests,
         try: os.unlink('hdf5test.h5')
         except IOError: pass
         except OSError: pass
-        f = tables.openFile('hdf5test.h5', 'w')
-        try:
-            p.dump(arg, f, '/obj')
-        finally:
-            f.close()
-        f = open('hdf5test.h5', 'r')
-        try:
+        p.dump(arg, 'hdf5test.h5')
+
+        with open('hdf5test.h5', 'r') as f:
             return f.read()
-        finally:
-            f.close()
+
     def loads(self, buf):
-        f = open('hdf5test.h5', 'w')
-        try:
+        with open('hdf5test.h5', 'w') as f:
             f.write(buf)
-        finally:
-            f.close()
-        f = tables.openFile('hdf5test.h5', 'r')
-        try:
-            return p.load(f, '/obj')
-        finally:
-            f.close()
+
+        return p.load('hdf5test.h5')
 
     def tearDown(self):
         try: os.unlink('hdf5test.h5')

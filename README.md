@@ -29,14 +29,11 @@ x=100.0, y=[ 1.  1.  1. ...,  1.  1.  1.], z=[{'a': None}, <class '__main__.A'>]
 ```
 
 
-Functions
----------
-```
-Type:       function
-String Form:<function dump at 0x19d9d70>
-Definition: hdf5pickle.dump(obj, filename, compress=3, complib='blosc')
-Docstring:
+API
+---
 
+### `hdf5pickle.dump(obj, filename, compress=3, complib='blosc')`
+```
 Fast persistence of an arbitrary Python object into HDF5 files
 
 Parameters
@@ -62,11 +59,10 @@ complib : str
 See Also
 --------
 hdf5pickle.load
+```
 
-Type:       function
-String Form:<function load at 0x19d9de8>
-Definition: hdf5pickle.load(filename)
-Docstring:
+### `hdf5pickle.load(filename)`
+```
 Reconstruct a Python object from a file persisted with h5pickle.dump
 
 Parameters

@@ -7,10 +7,10 @@ env:
     - python=3.3
 
 install:
-  - sudo apt-get install python-pip
+  - sudo apt-get install python-pip python-yaml
   - sudo pip install conda
   - sudo conda init
-  - sudo conda create --yes -n ${python} python=${python} numpy pytables nosetests six
+  - sudo conda create --yes -n ${python} python=${python} numpy pytables nose six
   - source activate ${python}
   - sudo python setup.py install
 

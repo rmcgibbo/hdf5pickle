@@ -223,7 +223,8 @@ class _FileInterface(object):
 
     def save_numeric_array(self, path, data):
         where, name = self._splitpath(path)
-        return self.file.createArray(where, name, data)
+        atom = tables.Atom.from_dtype(data.dtype)
+        return self.file.create_carray(where, name, obj=data)
 
     def load_array(self, node, type_):
         if type_ in (tuple, list, str, bytes, unicode_type):
@@ -757,7 +758,6 @@ class Unpickler(object):
 
     def _load_unicode(self, node):
         data = self.file.load_array(node, unicode_type)
-        print('unicode', data)
         return data
     _dispatch[UNICODE] = _load_unicode
 
@@ -973,7 +973,7 @@ def _check_pytables_name(key):
 #############################################################################
 
 
-def dump(obj, filename, compress=3):
+def dump(obj, filename, compress=3, complib='blosc'):
     """
     Fast persistence of an arbitrary Python object into HDF5 files
 
@@ -987,12 +987,21 @@ def dump(obj, filename, compress=3):
         Optional compression level for the data. 0 is no compression.
         Higher means more compression, but also slower read and
         write times. Using a value of 3 is often a good compromise.
+    complib : str
+        Specifies the compression library to be used. Right now, 'zlib' (the
+        default), 'lzo', 'bzip2' and 'blosc' are supported.  Additional
+        compressors for Blosc like 'blosc:blosclz' ('blosclz' is the default
+        in case the additional compressor is not specified), 'blosc:lz4',
+        'blosc:lz4hc', 'blosc:snappy' and 'blosc:zlib' are supported too.
+        Specifying a compression library which is not available in the
+        system issues a FiltersWarning and sets the library to the default
+        one.
     """
     if not isinstance(filename, basestring):
         raise ValueError('filename must be a string: %s' % filename)
 
     compress = min(max(compress, 0), 9)
-    filters = tables.Filters(complevel=compress, complib='zlib')
+    filters = tables.Filters(complevel=compress, complib=complib, shuffle=True)
     with tables.open_file(filename, 'w', filters=filters) as file:
         Pickler(file).dump('/data', obj)
 
